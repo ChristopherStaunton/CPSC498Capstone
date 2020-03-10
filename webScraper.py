@@ -12,26 +12,27 @@ searchC = True
 
 
 # Generic google search
+# Basic search results
 # unstable / unpredictable / numerous
 def searchMethodA(topic):
     global results
+    results = []
     USER_AGENT = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36'}
     response = requests.get('https://www.google.com/search?q={}&num={}&hl={}'.format(topic, 100, 'en'), headers=USER_AGENT)
     response.raise_for_status()
     soup = BeautifulSoup(response.text, 'html.parser')
-    results = []
-    result_block = soup.find_all('div', attrs={'class': 'g'})
-    for a in result_block:
-        link = a.find('a', href=True)
-        title = a.find('h3')
-        description = a.find('span', attrs={'class': 'st'})
-        if link and title:
-            link = link['href']
-            title = title.get_text()
-            if description:
-                description = description.get_text()
-            if link != '#':
-                results.append({topic, title, description})
+    page = soup.find_all('div', attrs={'class': 'g'})
+    for a in page:
+        source = a.find('a', href=True)
+        name = a.find('h3')
+        info = a.find('span', attrs={'class': 'st'})
+        if source and name:
+            source = source['href']
+            title = name.get_text()
+            if info:
+                info = info.get_text()
+            if source != '#':
+                results.append({topic, name, info})
 
 
 # Google search
@@ -149,8 +150,6 @@ def programStart(searchTopic, searchType, searchInput):
 
 # Tests
 # programStart("pizza", 'a', 0)
-# programStart("tv", 'a', 0)
 # programStart("movies", 'b', 0)
-# programStart("xbox games", 'b', 0)
 # programStart("irrelevant", 'c', 2006)
 # printResults()
