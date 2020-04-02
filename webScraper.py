@@ -1,6 +1,8 @@
 from bs4 import BeautifulSoup
+from lxml import html
 import requests
 from textblob import TextBlob
+import urllib, json
 
 # Global Variables
 # list of results
@@ -9,6 +11,7 @@ results = []
 searchA = True
 searchB = True
 searchC = True
+searchD = True
 
 
 # Generic google search
@@ -17,8 +20,10 @@ searchC = True
 def searchMethodA(topic):
     global results
     results = []
-    USER_AGENT = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36'}
-    response = requests.get('https://www.google.com/search?q={}&num={}&hl={}'.format(topic, 100, 'en'), headers=USER_AGENT)
+    USER_AGENT = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36'}
+    response = requests.get('https://www.google.com/search?q={}&num={}&hl={}'.format(topic, 100, 'en'),
+                            headers=USER_AGENT)
     response.raise_for_status()
     soup = BeautifulSoup(response.text, 'html.parser')
     page = soup.find_all('div', attrs={'class': 'g'})
@@ -40,8 +45,10 @@ def searchMethodA(topic):
 # Sometimes works well depending on input
 # unstable / unreliable / inconsistent
 def searchMethodB(topic):
-    USER_AGENT = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36'}
-    response = requests.get('https://www.google.com/search?q={}&num={}&hl={}'.format(topic, 100, 'en'), headers=USER_AGENT)
+    USER_AGENT = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36'}
+    response = requests.get('https://www.google.com/search?q={}&num={}&hl={}'.format(topic, 100, 'en'),
+                            headers=USER_AGENT)
     response.raise_for_status()
     soup = BeautifulSoup(response.text, 'html.parser')
     scrape = soup.find_all('div', attrs={'class': 'kltat'})
@@ -70,19 +77,42 @@ def searchMethodC(year):
             results.append(info)
 
 
+def organizeMethodDOutput():
+    output_File = open("output.txt", "r")
+    toBeCleaned = output_File.read()
+    output_File.close()
+    uncleanList = list(toBeCleaned)
+    output_File = open("output.txt", "w")
+    preWordCounter = 0
+    lineCounter = 0
+    pre = list('"word":"')
+    cur = ''
+    for c in uncleanList:
+        if preWordCounter >= 8 and uncleanList[lineCounter] != '"':
+            cur = cur + uncleanList[lineCounter]
+        elif preWordCounter >= 8 and uncleanList[lineCounter] == '"':
+            results.append(cur)
+            output_File.write(cur + '\n')
+            cur = ''
+            preWordCounter = 0
+        elif pre[preWordCounter] == uncleanList[lineCounter]:
+            preWordCounter = preWordCounter + 1
+        lineCounter = lineCounter + 1
+    output_File.close()
+
+
 # Search a web site that finds related words
 # Still being worked on
 # Issues with flexbox
 # stable / effective / numerous
 # https://relatedwords.org/
-# def searchMethodD(topic):
-#    global results
-#    results = []
-#    page = requests.get('https://relatedwords.org/relatedto/' + topic)
-#    soup = BeautifulSoup(page.content, 'html.parser')
-#    result = soup.find_all('a.flexbox', attrs={'class': "item"})
-#    for result in result_block:
-#        print(result)
+def searchMethodD(topic):
+    page = requests.get('https://relatedwords.org/api/related?term=' + topic)
+    soup = BeautifulSoup(page.content, 'html.parser')
+    output_File = open("output.txt", "w")
+    output_File.write(str(soup))
+    output_File.close()
+    organizeMethodDOutput()
 
 
 # Determines if results are sufficient
@@ -110,6 +140,7 @@ def search(sTopic, sType, sInput):
     global searchA
     global searchB
     global searchC
+    global searchD
     resultsFound = False
     if sType == 'a' and searchA:
         searchMethodA(sTopic)
@@ -123,6 +154,10 @@ def search(sTopic, sType, sInput):
         searchMethodC(sInput)
         resultsFound = areResultsGood()
         searchC = False
+    elif sType == 'd' and searchD:
+        searchMethodD(sTopic)
+        resultsFound = areResultsGood()
+        searchD = False
     elif searchA:
         searchMethodA(sTopic)
         resultsFound = areResultsGood()
@@ -135,6 +170,10 @@ def search(sTopic, sType, sInput):
         searchMethodC(sInput)
         resultsFound = areResultsGood()
         searchC = False
+    elif searchD:
+        searchMethodD(sTopic)
+        resultsFound = areResultsGood()
+        searchD = False
     if (not searchA and not searchB and not searchC) or resultsFound:
         return True
     else:
@@ -151,5 +190,9 @@ def programStart(searchTopic, searchType, searchInput):
 # Tests
 # programStart("pizza", 'a', 0)
 # programStart("movies", 'b', 0)
-# programStart("irrelevant", 'c', 2006)
+# programStart("", 'c', 2006)
+input_file = open("input.txt", "r")
+aSearchTerm = input_file.read()
+input_file.close()
+programStart(aSearchTerm, 'd', 0)
 # printResults()
